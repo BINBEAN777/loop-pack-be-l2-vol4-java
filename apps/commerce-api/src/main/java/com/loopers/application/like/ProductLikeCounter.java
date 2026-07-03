@@ -1,7 +1,9 @@
 package com.loopers.application.like;
 
+import com.loopers.config.CacheConfig;
 import com.loopers.domain.product.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,11 +20,15 @@ public class ProductLikeCounter {
 
     private final ProductRepository productRepository;
 
+    // 집계 반영 후 상세 캐시를 무효화한다. 좋아요 시점(LikeFacade)에도 evict 하지만, 집계가
+    // 커밋 후 비동기로 일어나므로 여기서 한 번 더 evict 해야 갱신된 좋아요 수가 다음 조회에 반영된다.
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_DETAIL, key = "#productId")
     @Transactional
     public void increase(Long productId) {
         productRepository.increaseLikeCount(productId);   // 원자적 UPDATE (동시 증가에도 안전)
     }
 
+    @CacheEvict(cacheNames = CacheConfig.PRODUCT_DETAIL, key = "#productId")
     @Transactional
     public void decrease(Long productId) {
         productRepository.decreaseLikeCount(productId);

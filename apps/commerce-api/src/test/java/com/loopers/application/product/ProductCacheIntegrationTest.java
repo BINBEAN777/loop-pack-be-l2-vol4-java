@@ -19,7 +19,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.cache.CacheManager;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
@@ -90,11 +93,11 @@ class ProductCacheIntegrationTest {
         assertThat(before.likeCount()).isEqualTo(0);
 
         // act
-        likeFacade.like(999L, product.getId());                                 // 캐시 evict
-        ProductInfo after = productFacade.getProductDetail(product.getId());    // 다시 조회 → DB 재조회
+        likeFacade.like(999L, product.getId());                                 // 캐시 evict + 비동기 집계
 
-        // assert
-        assertThat(after.likeCount()).isEqualTo(1);   // 무효화 안 됐다면 여전히 0 이어야 함
+        // assert — 집계(비동기)가 반영되고 상세 캐시가 무효화되면, 다음 조회에서 갱신된 좋아요 수가 보인다.
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productFacade.getProductDetail(product.getId()).likeCount()).isEqualTo(1));
     }
 
     @DisplayName("상품 목록을 두 번 조회하면, 두 번째는 캐시 히트라 DB 조회는 한 번만 일어난다.")
