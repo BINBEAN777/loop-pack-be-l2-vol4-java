@@ -5,10 +5,12 @@ import com.loopers.domain.coupon.UserCouponRepository;
 import com.loopers.domain.order.OrderCreationService;
 import com.loopers.domain.order.OrderModel;
 import com.loopers.domain.order.OrderRepository;
+import com.loopers.domain.order.event.OrderPlacedEvent;
 import com.loopers.domain.vo.Money;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,6 +24,7 @@ public class OrderFacade {
     private final OrderCreationService orderCreationService;
     private final OrderRepository orderRepository;
     private final UserCouponRepository userCouponRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional
     public OrderInfo placeOrder(OrderCriteria criteria) {
@@ -50,6 +53,10 @@ public class OrderFacade {
 
         // ④ 저장 (cascade=ALL 이라 OrderItem 도 함께 INSERT)
         OrderModel saved = orderRepository.save(order);
+
+        // ⑤ 주문 생성 "사실" 발행 → 유저 행동 로깅 등 부가 로직은 커밋 후 별도로 처리
+        eventPublisher.publishEvent(
+                new OrderPlacedEvent(saved.getId(), saved.getUserId(), saved.getFinalAmount().amount()));
 
         return OrderInfo.from(saved);
     }

@@ -13,9 +13,12 @@ import com.loopers.domain.payment.PgPaymentCommand;
 import com.loopers.domain.payment.PgRequestResult;
 import com.loopers.domain.payment.PgStatus;
 import com.loopers.domain.payment.PgTransactionResult;
+import com.loopers.domain.payment.event.PaymentCompletedEvent;
+import com.loopers.domain.payment.event.PaymentFailedEvent;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -34,15 +37,18 @@ public class PaymentFacade {
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
     private final PaymentGateway paymentGateway;
+    private final ApplicationEventPublisher eventPublisher;
     private final TransactionTemplate tx;
 
     public PaymentFacade(OrderRepository orderRepository,
                          PaymentRepository paymentRepository,
                          PaymentGateway paymentGateway,
+                         ApplicationEventPublisher eventPublisher,
                          PlatformTransactionManager transactionManager) {
         this.orderRepository = orderRepository;
         this.paymentRepository = paymentRepository;
         this.paymentGateway = paymentGateway;
+        this.eventPublisher = eventPublisher;
         this.tx = new TransactionTemplate(transactionManager);
     }
 
@@ -81,6 +87,8 @@ public class PaymentFacade {
                 paymentRepository.save(p);
                 OrderModel order = mustFindOrder(p.getOrderId());
                 order.fail();
+                eventPublisher.publishEvent(new PaymentFailedEvent(
+                        p.getId(), p.getOrderId(), p.getUserId(), e.getMessage()));
                 return PaymentInfo.from(p);
             });
         }
@@ -108,10 +116,15 @@ public class PaymentFacade {
             case SUCCESS -> {
                 payment.markSuccess(reason);
                 mustFindOrder(payment.getOrderId()).confirm();
+                // 결제 완료 "사실" 발행 → 알림/로깅 등 부가 로직은 커밋 후 분리 처리
+                eventPublisher.publishEvent(new PaymentCompletedEvent(
+                        payment.getId(), payment.getOrderId(), payment.getUserId(), payment.getAmount().amount()));
             }
             case FAILED -> {
                 payment.markFailed(reason);
                 mustFindOrder(payment.getOrderId()).fail();
+                eventPublisher.publishEvent(new PaymentFailedEvent(
+                        payment.getId(), payment.getOrderId(), payment.getUserId(), reason));
             }
             case PENDING -> {
                 // 아직 처리 중 — 반영할 것 없음
