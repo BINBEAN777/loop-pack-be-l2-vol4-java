@@ -3,7 +3,9 @@ package com.loopers.application.outbox;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loopers.application.outbox.message.CatalogEventMessage;
+import com.loopers.application.outbox.message.CouponIssueMessage;
 import com.loopers.application.outbox.message.OrderEventMessage;
+import com.loopers.domain.coupon.event.CouponIssueRequestedEvent;
 import com.loopers.domain.like.event.LikeAddedEvent;
 import com.loopers.domain.like.event.LikeRemovedEvent;
 import com.loopers.domain.order.event.OrderPlacedEvent;
@@ -59,6 +61,16 @@ public class OutboxEventRecorder {
         outboxRepository.save(OutboxEvent.create(
                 eventId, "order", String.valueOf(event.orderId()), "ORDER_PLACED",
                 Topics.ORDER_EVENTS, String.valueOf(event.orderId()), serialize(message)));
+    }
+
+    @EventListener
+    public void on(CouponIssueRequestedEvent event) {
+        String eventId = UUID.randomUUID().toString();
+        CouponIssueMessage message = new CouponIssueMessage(
+                eventId, event.requestId(), event.couponId(), event.userId(), System.currentTimeMillis());
+        outboxRepository.save(OutboxEvent.create(
+                eventId, "coupon", String.valueOf(event.couponId()), "COUPON_ISSUE_REQUESTED",
+                Topics.COUPON_ISSUE_REQUESTS, String.valueOf(event.couponId()), serialize(message)));
     }
 
     private void recordCatalog(String eventType, Long productId) {

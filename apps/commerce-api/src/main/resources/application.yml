@@ -25,12 +25,14 @@ spring:
       - logging.yml
       - monitoring.yml
 
-# ===== Transactional Outbox 릴레이 =====
+# ===== Transactional Outbox 릴레이 / Kafka Consumer =====
 loopers:
   outbox:
     relay:
       enabled: true            # @Scheduled 로 PENDING outbox 를 Kafka 로 발행 (test 프로파일에서 off)
       batch-size: 200
+  consumer:
+    auto-startup: true         # @KafkaListener(쿠폰 발급 등) 기동 (test 프로파일에서 off)
   cloud:
     openfeign:
       client:
@@ -92,12 +94,14 @@ spring:
     activate:
       on-profile: test
 
-# 단위/통합 테스트에서는 브로커 연결을 시도하지 않도록 릴레이 스케줄러를 끈다.
-# (Outbox 기록/릴레이 로직은 전용 테스트에서 KafkaTemplate 모킹/임베디드로 검증)
+# 단위/통합 테스트에서는 브로커 연결을 시도하지 않도록 릴레이·컨슈머를 끈다.
+# (Outbox 기록/릴레이·발급 로직은 전용 테스트에서 직접 검증)
 loopers:
   outbox:
     relay:
       enabled: false
+  consumer:
+    auto-startup: false
 
 ---
 spring:

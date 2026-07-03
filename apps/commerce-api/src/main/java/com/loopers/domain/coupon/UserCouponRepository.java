@@ -8,4 +8,6 @@ public interface UserCouponRepository {
     Optional<UserCouponModel> findById(Long id);
     List<UserCouponModel> findByUserId(Long userId);                       // 내 쿠폰 목록용
     List<UserCouponModel> findByCouponId(Long couponId, int page, int size); // ADMIN 발급 내역용
+
+    boolean existsByCouponIdAndUserId(Long couponId, Long userId);         // 중복 발급 방지
 }
