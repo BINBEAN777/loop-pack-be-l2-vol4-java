@@ -14,11 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 @SpringBootTest
 class LikeConcurrencyTest {
@@ -64,7 +66,10 @@ class LikeConcurrencyTest {
         latch.await();
         executor.shutdown();
 
-        ProductModel product = productRepository.findById(productId).orElseThrow();
-        assertThat(product.getLikeCount()).isEqualTo(USERS);   // ★ read-modify-write 면 깨질 지점
+        // 좋아요는 동기로 모두 성공(50행). 집계는 커밋 후 비동기 → 최종적으로 정확히 50이 되는지 확인.
+        // (원자적 UPDATE 이므로 동시 증가에도 lost update 가 없어야 한다)
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).orElseThrow().getLikeCount())
+                        .isEqualTo(USERS));
     }
 }

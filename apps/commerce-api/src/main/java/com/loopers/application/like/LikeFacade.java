@@ -3,12 +3,15 @@ package com.loopers.application.like;
 import com.loopers.config.CacheConfig;
 import com.loopers.domain.like.LikeModel;
 import com.loopers.domain.like.LikeRepository;
+import com.loopers.domain.like.event.LikeAddedEvent;
+import com.loopers.domain.like.event.LikeRemovedEvent;
 import com.loopers.domain.product.ProductModel;
 import com.loopers.domain.product.ProductRepository;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +21,7 @@ public class LikeFacade {
 
     private final LikeRepository likeRepository;
     private final ProductRepository productRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @CacheEvict(cacheNames = CacheConfig.PRODUCT_DETAIL, key = "#productId")
     @Transactional
@@ -31,7 +35,8 @@ public class LikeFacade {
         }
 
         likeRepository.save(new LikeModel(userId, productId));
-        productRepository.increaseLikeCount(productId);   // 원자적 UPDATE
+        // 집계(like_count)는 부가 로직 → 이벤트로 분리. 커밋 이후 별도 트랜잭션에서 처리한다.
+        eventPublisher.publishEvent(new LikeAddedEvent(userId, productId));
     }
 
     @CacheEvict(cacheNames = CacheConfig.PRODUCT_DETAIL, key = "#productId")
@@ -46,6 +51,6 @@ public class LikeFacade {
         }
 
         likeRepository.deleteByUserIdAndProductId(userId, productId);
-        productRepository.decreaseLikeCount(productId);   // 원자적 UPDATE
+        eventPublisher.publishEvent(new LikeRemovedEvent(userId, productId));
     }
 }
