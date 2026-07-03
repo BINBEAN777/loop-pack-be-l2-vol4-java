@@ -54,9 +54,12 @@ public class OrderFacade {
         // ④ 저장 (cascade=ALL 이라 OrderItem 도 함께 INSERT)
         OrderModel saved = orderRepository.save(order);
 
-        // ⑤ 주문 생성 "사실" 발행 → 유저 행동 로깅 등 부가 로직은 커밋 후 별도로 처리
-        eventPublisher.publishEvent(
-                new OrderPlacedEvent(saved.getId(), saved.getUserId(), saved.getFinalAmount().amount()));
+        // ⑤ 주문 생성 "사실" 발행 → 유저 행동 로깅/판매량 집계 등 부가 로직은 별도로 처리
+        List<OrderPlacedEvent.Line> eventLines = saved.getItems().stream()
+                .map(item -> new OrderPlacedEvent.Line(item.getProductId(), item.getQuantity().value()))
+                .toList();
+        eventPublisher.publishEvent(new OrderPlacedEvent(
+                saved.getId(), saved.getUserId(), saved.getFinalAmount().amount(), eventLines));
 
         return OrderInfo.from(saved);
     }
