@@ -34,4 +34,9 @@ public class UserCouponRepositoryImpl implements UserCouponRepository {
     public List<UserCouponModel> findByCouponId(Long couponId, int page, int size) {
         return userCouponJpaRepository.findByCouponId(couponId, PageRequest.of(page, size));
     }
+
+    @Override
+    public boolean existsByCouponIdAndUserId(Long couponId, Long userId) {
+        return userCouponJpaRepository.existsByCouponIdAndUserId(couponId, userId);
+    }
 }

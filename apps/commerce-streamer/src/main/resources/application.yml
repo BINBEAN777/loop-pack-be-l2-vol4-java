@@ -39,6 +39,18 @@ spring:
 spring:
   config:
     activate:
+      on-profile: test
+
+# 브로커 없는 단위/통합 테스트에서 컨슈머 자동 기동을 끈다(@KafkaListener autoStartup).
+# (집계/멱등 로직은 MetricsEventHandler 를 직접 호출해 검증)
+loopers:
+  consumer:
+    auto-startup: false
+
+---
+spring:
+  config:
+    activate:
       on-profile: dev
 
 ---

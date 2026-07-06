@@ -17,7 +17,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @SpringBootTest
@@ -51,7 +54,9 @@ class LikeFacadeTest {
         likeFacade.like(USER_ID, productId);
 
         assertThat(likeRepository.existsByUserIdAndProductId(USER_ID, productId)).isTrue();
-        assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1);
+        // 집계는 커밋 후 비동기(eventual consistency) → 최종적으로 1이 되는지 확인
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1));
     }
 
     @DisplayName("같은 사용자가 좋아요를 두 번 등록해도 likeCount 는 1 이다. (멱등)")
@@ -60,7 +65,8 @@ class LikeFacadeTest {
         likeFacade.like(USER_ID, productId);
         likeFacade.like(USER_ID, productId);
 
-        assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1));
     }
 
     @DisplayName("좋아요를 취소하면 like 행이 사라지고 likeCount 가 1 감소한다.")
@@ -70,7 +76,9 @@ class LikeFacadeTest {
         likeFacade.unlike(USER_ID, productId);
 
         assertThat(likeRepository.existsByUserIdAndProductId(USER_ID, productId)).isFalse();
-        assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(0);
+        // 추가(+1) → 취소(-1) 이벤트가 순서대로 처리되어 최종 0
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(0));
     }
 
     @DisplayName("좋아요하지 않은 상태에서 취소해도 에러 없이 likeCount 는 0 이다. (멱등)")

@@ -20,7 +20,10 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
+import java.time.Duration;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public class LikeV1ApiE2ETest {
@@ -63,7 +66,8 @@ public class LikeV1ApiE2ETest {
                 testRestTemplate.exchange(ENDPOINT, HttpMethod.POST, withUser(1L), type, productId);
 
         assertThat(second.getStatusCode().is2xxSuccessful()).isTrue();
-        assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(1));
     }
 
     @DisplayName("좋아요 취소 후 likeCount 는 0 이다.")
@@ -74,6 +78,7 @@ public class LikeV1ApiE2ETest {
         testRestTemplate.exchange(ENDPOINT, HttpMethod.POST, withUser(1L), type, productId);
         testRestTemplate.exchange(ENDPOINT, HttpMethod.DELETE, withUser(1L), type, productId);
 
-        assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(0);
+        await().atMost(Duration.ofSeconds(5)).untilAsserted(() ->
+                assertThat(productRepository.findById(productId).get().getLikeCount()).isEqualTo(0));
     }
 }
