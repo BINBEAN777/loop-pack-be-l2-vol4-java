@@ -14,8 +14,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @TestPropertySource(properties = {
+        "loopers.queue.scheduler.enabled=true",         // 이 테스트만 스케줄러 빈 생성
         "loopers.queue.scheduler.batch-size=2",
-        "loopers.queue.scheduler.interval-ms=3600000"   // 자동 실행이 테스트를 방해하지 않게 1시간으로 늦춤
+        "loopers.queue.scheduler.interval-ms=3600000"   // 자동 실행은 막고 issueTokens() 를 직접 호출
 })
 class TokenIssueSchedulerTest {
 
@@ -47,5 +48,27 @@ class TokenIssueSchedulerTest {
         assertThat(entryTokenStore.find(3L)).isEmpty();
         assertThat(waitingQueueRepository.findRank(3L)).hasValue(0L);
         assertThat(waitingQueueRepository.size()).isEqualTo(1L);
+    }
+
+    @DisplayName("배치 크기보다 많은 인원이 있어도, 한 번 실행에 딱 배치 크기만큼만 빠진다 (처리량 상한).")
+    @Test
+    void issueTokens_capsAtBatchSize_whenOverloaded() {
+        // arrange — 5명 대기 (batch-size=2)
+        for (long u = 1; u <= 5; u++) {
+            waitingQueueRepository.enter(u);
+        }
+
+        // act & assert — 매 실행마다 2명씩만 빠지고, 빈 큐에도 안전
+        scheduler.issueTokens();
+        assertThat(waitingQueueRepository.size()).isEqualTo(3L);
+
+        scheduler.issueTokens();
+        assertThat(waitingQueueRepository.size()).isEqualTo(1L);
+
+        scheduler.issueTokens();
+        assertThat(waitingQueueRepository.size()).isEqualTo(0L);
+
+        scheduler.issueTokens();   // 빈 큐 실행에도 예외 없이 안정
+        assertThat(waitingQueueRepository.size()).isEqualTo(0L);
     }
 }
