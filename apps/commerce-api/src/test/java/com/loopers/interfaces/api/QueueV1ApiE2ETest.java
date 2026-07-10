@@ -1,5 +1,6 @@
 package com.loopers.interfaces.api;
 
+import com.loopers.domain.queue.EntryTokenStore;
 import com.loopers.interfaces.api.queue.QueueV1Dto;
 import com.loopers.utils.RedisCleanUp;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +22,7 @@ public class QueueV1ApiE2ETest {
 
     @Autowired private TestRestTemplate testRestTemplate;
     @Autowired private RedisCleanUp redisCleanUp;
+    @Autowired private EntryTokenStore entryTokenStore;
 
     @AfterEach
     void tearDown() {
@@ -96,5 +98,23 @@ public class QueueV1ApiE2ETest {
                 testRestTemplate.exchange(POSITION_ENDPOINT, HttpMethod.GET, requestWithUser(99L), type);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+    }
+
+    @DisplayName("입장 토큰이 발급된 유저가 순번을 조회하면, 순번 0과 토큰이 함께 응답된다.")
+    @Test
+    void position_whenAdmitted_returnsPositionZeroWithToken() {
+        // arrange — 큐엔 없지만 토큰 보유 (스케줄러가 뽑아 토큰 준 상태 재현)
+        String issued = entryTokenStore.issue(1L);
+
+        // act
+        ParameterizedTypeReference<ApiResponse<QueueV1Dto.PositionResponse>> type =
+                new ParameterizedTypeReference<>() {};
+        ResponseEntity<ApiResponse<QueueV1Dto.PositionResponse>> response =
+                testRestTemplate.exchange(POSITION_ENDPOINT, HttpMethod.GET, requestWithUser(1L), type);
+
+        // assert — 순번 0 + 토큰 동봉
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody().data().position()).isEqualTo(0L);
+        assertThat(response.getBody().data().token()).isEqualTo(issued);
     }
 }
