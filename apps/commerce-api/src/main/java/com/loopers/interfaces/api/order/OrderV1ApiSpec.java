@@ -8,5 +8,5 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public interface OrderV1ApiSpec {
 
     @Operation(summary = "주문 생성", description = "여러 상품을 한 번에 주문한다. 재고 부족 시 전체 실패(All-or-Nothing).")
-    ApiResponse<OrderV1Dto.OrderResponse> createOrder(Long userId, OrderV1Dto.OrderRequest request);
+    ApiResponse<OrderV1Dto.OrderResponse> createOrder(Long userId, String entryToken, OrderV1Dto.OrderRequest request);
 }
