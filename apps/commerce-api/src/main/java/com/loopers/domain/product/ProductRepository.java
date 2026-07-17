@@ -21,4 +21,7 @@ public interface ProductRepository {
      * 상품 목록 조회. brandId 가 null 이면 전체, 아니면 해당 브랜드 상품만.
      */
     List<ProductModel> findAll(Long brandId, ProductSortOption sort, int page, int size);
+
+    /** ID 목록으로 일괄 조회 (IN 쿼리, N+1 방지). 순서는 보장하지 않는다 — 호출부에서 재정렬할 것. */
+    List<ProductModel> findAllByIds(List<Long> ids);
 }

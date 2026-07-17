@@ -42,13 +42,15 @@ public class ProductV1Dto {
             boolean isAvailable,
             Long brandId,
             String brandName,
-            String imageUrl
+            String imageUrl,
+            Long rank   // 오늘 랭킹판에서의 순위 (1-based). 랭킹에 없으면 null
     ) {
-        public static ProductDetailResponse from(ProductInfo info) {
+        public static ProductDetailResponse from(ProductInfo info, Long rank) {
             return new ProductDetailResponse(
                     info.id(), info.name(), info.description(), info.price(),
                     info.likeCount(), info.isAvailable(),
-                    info.brandId(), info.brandName(), info.imageUrl()
+                    info.brandId(), info.brandName(), info.imageUrl(),
+                    rank
             );
         }
     }
