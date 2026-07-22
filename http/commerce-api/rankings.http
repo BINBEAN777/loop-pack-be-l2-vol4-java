@@ -1,0 +1,8 @@
+### 오늘의 랭킹 조회 (기본: page=1, size=20)
+GET {{commerce-api}}/api/v1/rankings
+
+### 특정 날짜 랭킹 조회 (페이징)
+GET {{commerce-api}}/api/v1/rankings?date=20260716&size=20&page=1
+
+### 상품 상세 조회 — 오늘 랭킹 순위(rank) 동봉, 랭킹에 없으면 null
+GET {{commerce-api}}/api/v1/products/1

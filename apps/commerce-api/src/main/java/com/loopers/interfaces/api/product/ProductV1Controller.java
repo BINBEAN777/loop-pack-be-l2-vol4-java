@@ -2,6 +2,7 @@ package com.loopers.interfaces.api.product;
 
 import com.loopers.application.product.ProductFacade;
 import com.loopers.application.product.ProductInfo;
+import com.loopers.application.ranking.RankingFacade;
 import com.loopers.domain.product.ProductSortOption;
 import com.loopers.domain.product.event.ProductViewedEvent;
 import com.loopers.interfaces.api.ApiResponse;
@@ -21,6 +22,7 @@ import java.util.List;
 public class ProductV1Controller implements ProductV1ApiSpec {
 
     private final ProductFacade productFacade;
+    private final RankingFacade rankingFacade;
     private final ApplicationEventPublisher eventPublisher;
 
     @GetMapping
@@ -39,8 +41,10 @@ public class ProductV1Controller implements ProductV1ApiSpec {
     @Override
     public ApiResponse<ProductV1Dto.ProductDetailResponse> getProduct(@PathVariable Long productId) {
         ProductInfo info = productFacade.getProductDetail(productId);
+        // 순위는 캐시되는 상품 정보(getProductDetail)와 분리해 매번 조회 — 캐시에 순위가 박제되지 않게
+        Long rank = rankingFacade.getTodayRank(productId);
         // 조회 "사실" 발행 → 조회 수 집계는 이벤트 파이프라인(Outbox→Kafka→streamer)에서 처리
         eventPublisher.publishEvent(new ProductViewedEvent(productId, null));
-        return ApiResponse.success(ProductV1Dto.ProductDetailResponse.from(info));
+        return ApiResponse.success(ProductV1Dto.ProductDetailResponse.from(info, rank));
     }
 }

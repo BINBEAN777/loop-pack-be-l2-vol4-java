@@ -50,6 +50,18 @@ class MetricsEventHandlerTest {
         assertThat(metrics.getLikeCount()).isEqualTo(1);   // 2가 아니라 1
     }
 
+    @DisplayName("새로 반영하면 true, 중복이면 false 를 반환한다. (후속 랭킹 반영의 판단 기준)")
+    @Test
+    void catalog_returnsWhetherNewlyApplied() {
+        CatalogEventMessage message = new CatalogEventMessage("evt-ret", "LIKE_ADDED", PRODUCT_ID, 1L);
+
+        boolean first = handler.handleCatalog(message);
+        boolean second = handler.handleCatalog(message);
+
+        assertThat(first).isTrue();
+        assertThat(second).isFalse();
+    }
+
     @DisplayName("ORDER_PLACED 를 처리하면 라인별 상품의 sales_count 가 수량만큼 증가한다.")
     @Test
     void order_placed_increasesSalesCount() {
